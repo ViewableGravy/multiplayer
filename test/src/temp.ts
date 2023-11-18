@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { TInitializedGame, game } from './store/game';
-import { currentKeys, registerControls } from './initializers/keyboard';
+import { TEntity, TInitializedGame, game } from './store/game';
+import {  THandlers, getInputHandlers, keyHandler, registerControls } from './initializers/keyboard';
 import { setInnerFramerate, updateFrameRate } from './helpers/frameRate';
+
+
 
 /**
  * Initializes the game. This includes loading basic assets and setting up the scene.
@@ -10,13 +12,15 @@ import { setInnerFramerate, updateFrameRate } from './helpers/frameRate';
  */
 export const initialize = ({
   el,
-  size
+  size,
+  initializedEntities
 } : {
   el: HTMLElement,
   size: {
     width: number,
     height: number
-  }
+  },
+  initializedEntities: Array<TEntity>,
 }) => {
   const getPhongMaterialFromTexture = (texture: THREE.Texture, color: THREE.ColorRepresentation = 0xffffff) => {
     return new THREE.MeshPhongMaterial( { color, map: texture } );
@@ -55,8 +59,6 @@ export const initialize = ({
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera( 75, size.width / size.height, 0.1, 1000 );
 
-  registerControls({ camera });
-
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
     alpha: true
@@ -75,8 +77,36 @@ export const initialize = ({
     Object.values(element).forEach(element => scene.add(element));
   })
 
-  const assignInitializedGame = (initialized: TInitializedGame) =>
-    Object.assign(game, initialized);
+  /**
+   * Proxy function that pushes entities into the game state
+   */
+  const injectEntities = (entities: Array<TEntity>) => {
+    entities.forEach(entity => {
+      game.entities.push(entity);
+
+      entity.components.forEach(component => {
+        if (component.name === "input") {
+          return game.components.input.components.push(component);
+        }
+
+        if (component.name === "script") {
+          return game.components.scripts.push(component);
+        }
+      })
+    });
+  };
+
+  const assignInitializedGame = (initialized: TInitializedGame) => {
+    game.initialized = true;
+    game.controls = initialized.controls;
+    game.sceneElements = initialized.sceneElements;
+    game.renderer = initialized.renderer;
+    game.scene = initialized.scene;
+    game.camera = initialized.camera;
+
+    //insert entities
+    injectEntities(initialized.entities);
+  }
 
   assignInitializedGame({
     initialized: true,
@@ -84,8 +114,21 @@ export const initialize = ({
     sceneElements,
     renderer,
     scene,
-    camera
-  })
+    camera,
+    components: {
+      input: {
+        components: [],
+        currentKeys: {}
+      },
+      scripts: []
+    },
+    entities: initializedEntities
+  });
+
+  registerControls({
+    handlers: getInputHandlers(game as TInitializedGame)
+  });
+
 }
 
 export const animate = () => {
@@ -98,6 +141,8 @@ export const animate = () => {
     return;
 
   const { controls } = game;
+
+  keyHandler(getInputHandlers(game));
 
 	game.sceneElements.objects.cube.rotation.x += 0.001;
 	game.sceneElements.objects.cube.rotation.y += 0.001;

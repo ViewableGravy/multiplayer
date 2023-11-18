@@ -1,34 +1,21 @@
-import { PerspectiveCamera } from "three"
+import { TInitializedGame, game } from "../store/game";
+import { ValueOf } from "../types/helpers";
+
+/**
+ * This can likely be attached to the main game object in the future
+ */
+// export const currentKeys = {} as Record<string, boolean>;
 
 const KEY_DIRECTION = {
   UP: 'up',
   DOWN: 'down',
 } as const;
 
-const SPEEDS = {
-  CRAWL: 0.1,
-  WALK: 0.2,
-  RUN: 0.5,
-  SPRINT: 1,
-}
-
-const HANDLER_NAMES = {
-  WALK_UP: 'walkUp',
-  RUN_UP: 'runUp',
-} as const;
-
-/**
- * This can likely be attached to the main game object in the future
- */
-export const currentKeys = {} as Record<string, boolean>;
-
-type ValueOf<T> = T[keyof T];
-
-type THandlers = {
+export type THandlers = {
   /**
    * The name of the handler
    */
-  name: ValueOf<typeof HANDLER_NAMES>,
+  name: string,
 
   /**
    * The keys that should be pressed to activate the handler
@@ -36,9 +23,40 @@ type THandlers = {
   keys: Array<string | string[]>,
 
   /**
+   * The event that should trigger the handler
+   */
+  triggers: 'update' | 'keydown' | 'keyup' | 'change',
+
+  /**
    * The function to call when the keys are pressed
    */
-  handler: () => void,
+  handler: (props: {
+    /**
+     * The keys that were pressed to activate the handler
+     */
+    keys: string | string[];
+
+    /**
+     * The current state of the game
+     */
+    game: TInitializedGame;
+
+    /**
+     * The time since the last frame
+     */
+    deltaTime: number;
+
+    /**
+     * dictates whether this handler was active in the previous frame.
+     */
+    activePreviousFrame: boolean;
+  }) => void,
+
+  /**
+   * Used to identify the handler, this can be used when removing handlers from the game
+   */
+  identifier: string,
+
   /**
    * Higher number means that this handler will take precendence over other handlers
    */
@@ -55,49 +73,25 @@ type THandlers = {
   description: string,
 }[];
 
-const events = {
-  up: (speed: ValueOf<typeof SPEEDS> = SPEEDS.WALK ) => () => {
-    console.log('up: ', speed)
-  },
-  left: () => {
-    console.log('left')
-  },
-  down: () => {
-    console.log('down')
-  },
-  right: () => {
-    console.log('right')
-  },
-}
+export const getInputHandlers = (game: TInitializedGame) => game.components.input.components.reduce((acc, { handlers }) => acc.concat(handlers), [] as THandlers);
 
-/**
- * An array of event handlers, these are sorted by their respective priorities
- */
-const handlers: THandlers = [
-  {
-    name: HANDLER_NAMES.WALK_UP,
-    keys: [ 'w', 'ArrowUp' ],
-    handler: events.up(),
-    description: 'Walk Forward',
-    priority: 0,
-  },
-  {
-    name: HANDLER_NAMES.RUN_UP,
-    keys: [[ 'Shift', 'w' ], [ 'Shift', 'ArrowUp' ]],
-    handler: events.up(SPEEDS.SPRINT),
-    priority: 1,
-    description: 'Run Forward',
-    deescalations: [HANDLER_NAMES.WALK_UP]
-  }
-].sort((a, b) => b.priority - a.priority);
+//todo: I've added a lot of props in this object, this is mainly to allow for more flexibility in the future
+// specifically, triggers which specify when the handler should be called - I might need to change this to an array in case they want it triggered on keydown/keyup and on render
 
-export const controls = handlers.map(({ name, keys, description }) => ({ name, keys, description }))
+// I also need the properties to pass to the callback. This should generally be a matter of adding some more meta to the "currentKeys" object on the game (ie. previousKeys to calculate activePreviousFrame)
+// as well as delta time which I can calculate in the main loop and store on the game object.
 
 /**
  * Calls the handler and enforces deescalations
  */
 const onMatch = (handler: THandlers[number], enforedDeescalations: string[]) => {
-  handler.handler();
+  //todo proper implementation
+  handler.handler({
+    activePreviousFrame: false,
+    deltaTime: 0,
+    game: game as TInitializedGame,
+    keys: 'w'
+  });
 
   if (handler.deescalations)
     enforedDeescalations.push(...handler.deescalations);
@@ -106,53 +100,61 @@ const onMatch = (handler: THandlers[number], enforedDeescalations: string[]) => 
 /**
  * Handles key presses for individual and combined keys
  */
-const keyHandler = (handlers: THandlers) => {
-  const enforedDeescalations = [] as string[]; 
+export const keyHandler = (handlers: THandlers,) => {
+  const enforcedDeescalations = [] as string[];
 
   handlers.forEach((handler) => {
-    if (enforedDeescalations.includes(handler.name))
+    if (enforcedDeescalations.includes(handler.name))
       return;
 
-    for (const match of handler.keys) {
+    for (let i = 0; i < handler.keys.length; ++i) {
+      const match = handler.keys[i];
+      
       if (Array.isArray(match)) {
         // match is an array of keys that must all be pressed
-        if (!match.every((key) => currentKeys[key.toLowerCase()]))
-          return;
+        if (!match.every((key) => game.components.input.currentKeys[key.toLowerCase()]))
+          continue;
 
-        return onMatch(handler, enforedDeescalations);
+        return onMatch(handler, enforcedDeescalations);
       }
 
-      if (!currentKeys[match.toLowerCase()])
-        return;
+      if (!game.components.input.currentKeys[match.toLowerCase()])
+        continue;
 
-      return onMatch(handler, enforedDeescalations);
+      return onMatch(handler, enforcedDeescalations);
     }
   });
 }
 
-const getEventHandler = (direction: ValueOf<typeof KEY_DIRECTION>) => ({ key: caseKey }: KeyboardEvent) => {
+const getEventHandler = ({ 
+  direction, 
+  handlers 
+} : { 
+  direction: ValueOf<typeof KEY_DIRECTION>, 
+  handlers: THandlers 
+}) => ({ key: caseKey }: KeyboardEvent) => {
   const key = caseKey.toLowerCase();
 
   if (direction === KEY_DIRECTION.UP) {
-    if (currentKeys[key]) {
-      delete currentKeys[key];
+    if (game.components.input.currentKeys[key]) {
+      delete game.components.input.currentKeys[key];
       keyHandler(handlers);
     }
   }
 
   if (direction === KEY_DIRECTION.DOWN) {
-    if (!currentKeys[key]) {
-      currentKeys[key] = true;
+    if (!game.components.input.currentKeys[key]) {
+      game.components.input.currentKeys[key] = true;
       keyHandler(handlers);
     }
   }
 }
 
 export const registerControls = ({
-  camera
+  handlers
 }: {
-  camera: PerspectiveCamera
+  handlers: THandlers
 }) => {
-  document.onkeydown = getEventHandler(KEY_DIRECTION.DOWN)
-  document.onkeyup = getEventHandler(KEY_DIRECTION.UP)
+  document.onkeydown = getEventHandler({ direction: KEY_DIRECTION.DOWN, handlers })
+  document.onkeyup = getEventHandler({ direction: KEY_DIRECTION.UP, handlers })
 }

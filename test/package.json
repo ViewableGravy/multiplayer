@@ -9,12 +9,14 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@types/uuid": "^9.0.7",
     "typescript": "^5.0.2",
     "vite": "^4.4.5"
   },
   "dependencies": {
     "@types/three": "^0.158.2",
     "lit-html": "^3.1.0",
-    "three": "^0.158.0"
+    "three": "^0.158.0",
+    "uuid": "^9.0.1"
   }
 }
