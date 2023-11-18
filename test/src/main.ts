@@ -2,7 +2,7 @@ import { THandlers } from './initializers/keyboard.ts';
 import { animate, initialize } from './temp.ts';
 import './style.css'
 import { generateUUID } from 'three/src/math/MathUtils.js';
-import { TEntity, TInputComponent, TUninitializedInputComponent, TUnionComponents } from './store/game.ts';
+import { TEntity, TUninitializedInputComponent, TUnionComponents } from './store/game.ts';
 import { ValueOf } from './types/helpers.ts';
 
 const SPEEDS = {
@@ -34,6 +34,8 @@ const events = {
 
 /**
  * An array of event handlers, these are sorted by their respective priorities
+ * 
+ * Todo: Extract THandler generation to a function to simplify this 😭
  */
 const handlers: THandlers = [
   {
@@ -43,6 +45,7 @@ const handlers: THandlers = [
     identifier: generateUUID(),
     description: 'Walk Forward',
     priority: 0,
+    triggers: ['update'] as THandlers[number]['triggers']
   },
   {
     name: HANDLER_NAMES.RUN_UP,
@@ -51,7 +54,8 @@ const handlers: THandlers = [
     identifier: generateUUID(),
     priority: 1,
     description: 'Run Forward',
-    deescalations: [HANDLER_NAMES.WALK_UP]
+    deescalations: [HANDLER_NAMES.WALK_UP],
+    triggers: ['update'] as THandlers[number]['triggers']
   }
 ].sort((a, b) => b.priority - a.priority);
 

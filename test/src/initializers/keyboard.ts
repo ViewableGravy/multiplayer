@@ -25,7 +25,7 @@ export type THandlers = {
   /**
    * The event that should trigger the handler
    */
-  triggers: 'update' | 'keydown' | 'keyup' | 'change',
+  triggers: Array<'update' | 'keydown' | 'keyup' | 'change'>,
 
   /**
    * The function to call when the keys are pressed
