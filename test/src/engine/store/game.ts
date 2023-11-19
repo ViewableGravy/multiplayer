@@ -1,5 +1,5 @@
 import { OrbitControls } from "three/examples/jsm/Addons.js"
-import { THandlers } from "../initializers/keyboard"
+import { THandlers } from "../components/keyboard"
 
 /*********************************************************************
  * Components
@@ -49,13 +49,20 @@ export type TInitializedGame = {
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
   camera: THREE.Camera,
+  meta: {
+    desiredFPS: number,
+    previousFrame: number,
+    deltaTime: number
+  },
   components: {
     input: {
       /**
        * Input Components 
        */
       components: Array<TInputComponent>, 
-      currentKeys: Record<string, boolean>
+      currentKeys: Record<string, boolean>,
+      currentHandlerIDs: string[],
+      previousHandlerIDs: string[]
     },
     /** 
      * Custom interaction scripts that are run per frame 
@@ -72,15 +79,23 @@ export type TUninitializedGame = {
   renderer: null,
   scene: null,
   camera: null,
+  meta: {
+    desiredFPS: number,
+    previousFrame: number,
+    deltaTime: number
+  },
   components: {
     input: {
       components: Array<TInputComponent>, /* Input Components */
-      currentKeys: Record<string, boolean>
+      currentKeys: Record<string, boolean>,
+      currentHandlerIDs: string[],
+      previousHandlerIDs: string[]
     },
     scripts: Array<TScriptComponent>
   },
   entities: Array<TEntity>
 }
+
 /**
  * The game state, everything in the world should reference this
  */
@@ -91,10 +106,17 @@ export const game = {
   renderer: null,
   scene: null,
   camera: null,
+  meta: {
+    desiredFPS: 60,
+    previousFrame: performance.now(),
+    deltaTime: 0
+  },
   components: {
     input: {
       components: [],
-      currentKeys: {}
+      currentKeys: {},
+      currentHandlerIDs: [],
+      previousHandlerIDs: []
     },
     scripts: []
   },

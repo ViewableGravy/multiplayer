@@ -1,16 +1,20 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TEntity, TInitializedGame, game } from './store/game';
-import {  THandlers, getInputHandlers, keyHandler, registerControls } from './initializers/keyboard';
-import { setInnerFramerate, updateFrameRate } from './helpers/frameRate';
+import {  generateHandler, generateInput, getInputHandlers, keyHandler, registerControls, updatePreviousHandlerIds } from './components/keyboard';
+import { setInnerFramerate, updateFrameRate } from '../helpers/frameRate';
+import { setDeltaTime, setPreviousFrame } from './store/meta';
+import { generateEntity } from './components/entity';
 
-
+/**
+ * Todo, create unmount function that removes all event listeners
+ */
 
 /**
  * Initializes the game. This includes loading basic assets and setting up the scene.
  * @param params - Basic parameters to generate the game window 
  */
-export const initialize = ({
+const initialize = ({
   el,
   size,
   initializedEntities
@@ -66,6 +70,12 @@ export const initialize = ({
 
   //configure dom element
   renderer.setSize( size.width, size.height );
+
+  if (el.children.length > 0) {
+    el.removeChild(el.children[0]);
+    cancelAnimationFrame(animationId);
+  }
+
   el.appendChild( renderer.domElement );
 
   camera.position.z = 5;
@@ -115,10 +125,17 @@ export const initialize = ({
     renderer,
     scene,
     camera,
+    meta: {
+      deltaTime: 0,
+      desiredFPS: 120,
+      previousFrame: performance.now()
+    },
     components: {
       input: {
         components: [],
-        currentKeys: {}
+        currentKeys: {}, //object of currently pressed keys
+        currentHandlerIDs: [],
+        previousHandlerIDs: []
       },
       scripts: []
     },
@@ -131,23 +148,78 @@ export const initialize = ({
 
 }
 
-export const animate = () => {
-  requestAnimationFrame( animate );
+const postRender = () => {
+  updatePreviousHandlerIds();
+};
 
+const preRender = () => {
+  setPreviousFrame();
+}
+
+const preUpdate = (game: TInitializedGame) => {
+  // Update Meta
+  setDeltaTime();
+
+  // Input Controls
+  keyHandler(getInputHandlers(game, 'update'));
+
+  // Framerate Counter
   updateFrameRate();
   setInnerFramerate(document.querySelector<HTMLDivElement>('#fps')!);
+}
+
+let animationId: number;
+const startEngine = () => {
+  animationId = requestAnimationFrame( startEngine );
 
   if (!game.initialized)
     return;
 
+  preUpdate(game)
+  
+  // Game Logic
   const { controls } = game;
-
-  keyHandler(getInputHandlers(game));
-
 	game.sceneElements.objects.cube.rotation.x += 0.001;
 	game.sceneElements.objects.cube.rotation.y += 0.001;
 
   controls.update();
 
+  // Render
+  preRender();
 	game.renderer.render( game.scene, game.camera );
+
+  // Post Render Actions
+  postRender();
+}
+
+const stopEngine = () => {
+  game.initialized = false;
+
+  if (!animationId)
+    return 
+
+  cancelAnimationFrame(animationId);
+}
+
+/***************************************************************
+ * EXPORTS
+ ***************************************************************/
+
+/**
+ * Gravy Engine
+ * 
+ * This is the main engine that runs the game. It is responsible for
+ * rendering the game, updating the game state, and handling input.
+ */
+export const GravyEngine = {
+  initialize,
+  startEngine,
+  stopEngine,
+  input: {
+    generateHandler,
+    generateInput
+  },
+  entities: {
+    generateEntity
+  }
 }
