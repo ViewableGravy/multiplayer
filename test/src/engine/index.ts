@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TEntity, TInitializedGame, game } from './store/game';
-import {  generateHandler, generateInput, getInputHandlers, keyHandler, registerControls, updatePreviousHandlerIds } from './components/keyboard';
+import {  KEYS, generateHandler, generateInput, getInputHandlers, keyHandler, registerControls, updatePreviousHandlerIds } from './components/keyboard';
 import { setInnerFramerate, updateFrameRate } from '../helpers/frameRate';
 import { setDeltaTime, setPreviousFrame } from './store/meta';
 import { generateEntity } from './components/entity';
+import { generateRender } from './components/render';
 
 /**
  * Todo, create unmount function that removes all event listeners
@@ -54,9 +55,9 @@ const initialize = ({
       ambient: generateAmbientLight(),
       directional: generateDirectionalLight()
     },
-    objects: {
-      cube: new THREE.Mesh( geometries.box, getPhongMaterialFromTexture(textures.ian) )
-    }
+    // objects: {
+    //   cube: new THREE.Mesh( geometries.box, getPhongMaterialFromTexture(textures.ian) )
+    // }
   }
 
   //create scene
@@ -88,7 +89,7 @@ const initialize = ({
   })
 
   /**
-   * Proxy function that pushes entities into the game state
+   * function that pushes entities into the game state
    */
   const injectEntities = (entities: Array<TEntity>) => {
     entities.forEach(entity => {
@@ -102,26 +103,35 @@ const initialize = ({
         if (component.name === "script") {
           return game.components.scripts.push(component);
         }
+
+        if (component.name === "render") {
+          return game.components.render.meshes.push(component.render.mesh);
+        }
       })
     });
   };
 
+  const registerObjectsToScene = (meshes: Array<THREE.Mesh>) => {
+    meshes.forEach(mesh => scene.add(mesh));
+  }
+
   const assignInitializedGame = (initialized: TInitializedGame) => {
     game.initialized = true;
     game.controls = initialized.controls;
-    game.sceneElements = initialized.sceneElements;
     game.renderer = initialized.renderer;
     game.scene = initialized.scene;
     game.camera = initialized.camera;
 
     //insert entities
     injectEntities(initialized.entities);
+
+    //register objects to scene
+    registerObjectsToScene(game.components.render.meshes);
   }
 
   assignInitializedGame({
     initialized: true,
     controls,
-    sceneElements,
     renderer,
     scene,
     camera,
@@ -137,7 +147,11 @@ const initialize = ({
         currentHandlerIDs: [],
         previousHandlerIDs: []
       },
-      scripts: []
+      scripts: [],
+      render: {
+        meshes: [],
+        lighting: [generateAmbientLight(), generateDirectionalLight()]
+      }
     },
     entities: initializedEntities
   });
@@ -179,8 +193,14 @@ const startEngine = () => {
   
   // Game Logic
   const { controls } = game;
-	game.sceneElements.objects.cube.rotation.x += 0.001;
-	game.sceneElements.objects.cube.rotation.y += 0.001;
+
+	// game.sceneElements.objects.cube.rotation.x += 0.001;
+	// game.sceneElements.objects.cube.rotation.y += 0.001;
+
+  game.components.render.meshes.forEach(mesh => {
+    mesh.rotation.x += 0.0001;
+    mesh.rotation.y += 0.0001;
+  });
 
   controls.update();
 
@@ -194,6 +214,22 @@ const startEngine = () => {
 
 const stopEngine = () => {
   game.initialized = false;
+
+  game.scene?.clear();
+  game.renderer?.dispose();
+  game.components = {
+    input: {
+      components: [],
+      currentKeys: {}, //object of currently pressed keys
+      currentHandlerIDs: [],
+      previousHandlerIDs: []
+    },
+    scripts: [],
+    render: {
+      meshes: [],
+      lighting: []
+    }
+  }
 
   if (!animationId)
     return 
@@ -215,9 +251,15 @@ export const GravyEngine = {
   initialize,
   startEngine,
   stopEngine,
-  input: {
-    generateHandler,
-    generateInput
+  component: {
+    input: {
+      generateHandler,
+      generateInput,
+      KEYS
+    },
+    render: {
+      generateRender
+    }
   },
   entities: {
     generateEntity

@@ -1,6 +1,7 @@
 import { generateUUID } from "three/src/math/MathUtils.js";
-import { TInitializedGame, TUninitializedInputComponent, game } from "../store/game";
+import { TInitializedGame, TUninitializedComponent, TUninitializedInputComponent, game } from "../store/game";
 import { ValueOf } from "../types/helpers";
+import { assignIdentifier } from "./render";
 
 /**
  * This can likely be attached to the main game object in the future
@@ -10,6 +11,78 @@ import { ValueOf } from "../types/helpers";
 const KEY_DIRECTION = {
   UP: 'up',
   DOWN: 'down',
+} as const;
+
+const STANDARD_KEYS = {
+  A: 'a',
+  B: 'b',
+  C: 'c',
+  D: 'd',
+  E: 'e',
+  F: 'f',
+  G: 'g',
+  H: 'h',
+  I: 'i',
+  J: 'j',
+  K: 'k',
+  L: 'l',
+  M: 'm',
+  N: 'n',
+  O: 'o',
+  P: 'p',
+  Q: 'q',
+  R: 'r',
+  S: 's',
+  T: 't',
+  U: 'u',
+  V: 'v',
+  W: 'w',
+  X: 'x',
+  Y: 'y',
+  Z: 'z',
+} as const;
+
+const ARROW_KEYS = {
+  ARROW_UP: 'ArrowUp',
+  ARROW_LEFT: 'ArrowLeft',
+  ARROW_DOWN: 'ArrowDown',
+  ARROW_RIGHT: 'ArrowRight',
+} as const;
+
+const SPECIAL_KEYS = {
+  SHIFT: 'Shift',
+  CONTROL: 'Control',
+  ALT: 'Alt',
+  META: 'Meta',
+  ENTER: 'Enter',
+  BACKSPACE: 'Backspace',
+  TAB: 'Tab',
+  CAPS_LOCK: 'CapsLock',
+  ESCAPE: 'Escape',
+  SPACE: ' ',
+  PAGE_UP: 'PageUp',
+  PAGE_DOWN: 'PageDown',
+  END: 'End',
+  HOME: 'Home',
+  INSERT: 'Insert',
+  DELETE: 'Delete',
+  SEMICOLON: ';',
+  EQUAL: '=',
+  COMMA: ',',
+  MINUS: '-',
+  PERIOD: '.',
+  SLASH: '/',
+  BACKTICK: '`',
+  OPEN_BRACKET: '[',
+  BACKSLASH: '\\',
+  CLOSE_BRACKET: ']',
+  QUOTE: '\'',
+} as const;
+
+export const KEYS = {
+  ...STANDARD_KEYS,
+  ...ARROW_KEYS,
+  ...SPECIAL_KEYS,
 } as const;
 
 type TTriggers = 'update' | 'keydown' | 'keyup' | 'change';
@@ -113,10 +186,10 @@ export const generateHandler = ({
   deescalations: deescalations ?? []
 } as THandler); 
 
-export const generateInput = (handlers: THandlers): TUninitializedInputComponent => ({
+export const generateInput = (handlers: THandlers) => assignIdentifier<TUninitializedInputComponent>(({
   name: 'input',
-  handlers
-});
+  handlers,
+}));
 
 export const updatePreviousHandlerIds = () => {
   game.components.input.previousHandlerIDs = game.components.input.currentHandlerIDs;

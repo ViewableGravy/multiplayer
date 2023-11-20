@@ -13,7 +13,7 @@ export const generateEntity = ({ name, components }: {
 
   entity.components.push(...components.map((component) => ({
     ...component,
-    entity
+    entity,
   } as TUnionComponents)));
 
   return entity;

@@ -10,23 +10,39 @@ type TComponent = {
   entity: TEntity
 }
 
+export type TUninitializedComponent = {
+  identifier?: string,
+}
+
+export type TUninitializedComponentWithIdentifier = {
+  identifier: string,
+}
+
 export type TUninitializedInputComponent = {
   name: 'input',
-  handlers: THandlers
-}
+  handlers: THandlers,
+} & TUninitializedComponent
 
 export type TUninitializedScriptComponent = {
   name: 'script',
   script: () => void
-}
+} & TUninitializedComponent
+
+export type TUninitializedRenderComponent = {
+  name: 'render',
+  render: {
+    mesh: THREE.Mesh
+  }
+} & TUninitializedComponent
 
 export type TInputComponent = TComponent & TUninitializedInputComponent
 export type TScriptComponent = TComponent & TUninitializedScriptComponent
+export type TRenderComponent = TComponent & TUninitializedRenderComponent
 
 /**
  * A Union of all Components
  */
-export type TUnionComponents = TInputComponent | TScriptComponent
+export type TUnionComponents = TInputComponent | TScriptComponent | TRenderComponent
 
 export type TEntity = {
   id: string,
@@ -37,15 +53,6 @@ export type TEntity = {
 export type TInitializedGame = {
   initialized: true,
   controls: OrbitControls,
-  sceneElements: {
-    lighting: {
-      ambient: THREE.AmbientLight,
-      directional: THREE.DirectionalLight
-    },
-    objects: {
-      cube: THREE.Mesh
-    }
-  },
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
   camera: THREE.Camera,
@@ -67,7 +74,11 @@ export type TInitializedGame = {
     /** 
      * Custom interaction scripts that are run per frame 
      */
-    scripts: Array<TScriptComponent> 
+    scripts: Array<TScriptComponent>,
+    render: {
+      meshes: Array<THREE.Mesh>,
+      lighting: Array<THREE.AmbientLight | THREE.DirectionalLight>
+    }
   },
   entities: Array<TEntity>
 }
@@ -75,7 +86,6 @@ export type TInitializedGame = {
 export type TUninitializedGame = {
   initialized: false,
   controls: null,
-  sceneElements: null,
   renderer: null,
   scene: null,
   camera: null,
@@ -91,7 +101,11 @@ export type TUninitializedGame = {
       currentHandlerIDs: string[],
       previousHandlerIDs: string[]
     },
-    scripts: Array<TScriptComponent>
+    scripts: Array<TScriptComponent>,
+    render: {
+      meshes: Array<THREE.Mesh>,
+      lighting: Array<THREE.AmbientLight | THREE.DirectionalLight>
+    }
   },
   entities: Array<TEntity>
 }
@@ -102,7 +116,6 @@ export type TUninitializedGame = {
 export const game = {
   initialized: false,
   controls: null,
-  sceneElements: null,
   renderer: null,
   scene: null,
   camera: null,
@@ -118,7 +131,11 @@ export const game = {
       currentHandlerIDs: [],
       previousHandlerIDs: []
     },
-    scripts: []
+    scripts: [],
+    render: {
+      meshes: [],
+      lighting: []
+    }
   },
   entities: []
 } as TInitializedGame | TUninitializedGame
