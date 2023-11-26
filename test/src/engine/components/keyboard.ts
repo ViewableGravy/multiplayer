@@ -1,7 +1,6 @@
 import { generateUUID } from "three/src/math/MathUtils.js";
-import { TInitializedGame, TUninitializedComponent, TUninitializedInputComponent, game } from "../store/game";
+import { TInitializedGame, TUninitializedInputComponent, game } from "../store/game";
 import { ValueOf } from "../types/helpers";
-import { assignIdentifier } from "./render";
 
 /**
  * This can likely be attached to the main game object in the future
@@ -186,10 +185,11 @@ export const generateHandler = ({
   deescalations: deescalations ?? []
 } as THandler); 
 
-export const generateInput = (handlers: THandlers) => assignIdentifier<TUninitializedInputComponent>(({
+export const generateInput = (handlers: THandlers) => ({
   name: 'input',
   handlers,
-}));
+  identifier: generateUUID()
+} as const);
 
 export const updatePreviousHandlerIds = () => {
   game.components.input.previousHandlerIDs = game.components.input.currentHandlerIDs;

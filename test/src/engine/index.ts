@@ -6,6 +6,9 @@ import { setInnerFramerate, updateFrameRate } from '../helpers/frameRate';
 import { setDeltaTime, setPreviousFrame } from './store/meta';
 import { generateEntity } from './components/entity';
 import { generateRender } from './components/render';
+import { getOverlay } from './dom';
+import { handleMeshLoad } from './components/loaders/meshLoader';
+import { getEngineInstancedMesh } from './components/instancedMesh';
 
 /**
  * Todo, create unmount function that removes all event listeners
@@ -27,9 +30,6 @@ const initialize = ({
   },
   initializedEntities: Array<TEntity>,
 }) => {
-  const getPhongMaterialFromTexture = (texture: THREE.Texture, color: THREE.ColorRepresentation = 0xffffff) => {
-    return new THREE.MeshPhongMaterial( { color, map: texture } );
-  }
 
   const generateDirectionalLight = (color: THREE.ColorRepresentation = 0xffffff, intensity: number = 0.5) => {
     const directionalLight = new THREE.DirectionalLight( color, intensity );
@@ -42,22 +42,11 @@ const initialize = ({
     return new THREE.AmbientLight( color );
   }
 
-  const textures = {
-    ian: new THREE.TextureLoader().load('/src/assets/ian.jpg')
-  }
-
-  const geometries = {
-    box: new THREE.BoxGeometry( 1, 1, 1 )
-  }
-
   const sceneElements = {
     lighting: {
       ambient: generateAmbientLight(),
       directional: generateDirectionalLight()
     },
-    // objects: {
-    //   cube: new THREE.Mesh( geometries.box, getPhongMaterialFromTexture(textures.ian) )
-    // }
   }
 
   //create scene
@@ -69,6 +58,8 @@ const initialize = ({
     alpha: true
   });
 
+
+
   //configure dom element
   renderer.setSize( size.width, size.height );
 
@@ -78,6 +69,10 @@ const initialize = ({
   }
 
   el.appendChild( renderer.domElement );
+
+  el.style.position = 'relative';
+
+
 
   camera.position.z = 5;
 
@@ -105,15 +100,19 @@ const initialize = ({
         }
 
         if (component.name === "render") {
-          return game.components.render.meshes.push(component.render.mesh);
+          if (component.type === 'instancedMesh') {
+            return handleMeshLoad(component.render);
+          }
+
+          throw new Error('Render component type not found');
         }
       })
     });
   };
 
-  const registerObjectsToScene = (meshes: Array<THREE.Mesh>) => {
-    meshes.forEach(mesh => scene.add(mesh));
-  }
+  // const registerObjectsToScene = (meshes: Array<THREE.Mesh | THREE.InstancedMesh>) => {
+  //   meshes.forEach(mesh => scene.add(mesh));
+  // }
 
   const assignInitializedGame = (initialized: TInitializedGame) => {
     game.initialized = true;
@@ -125,8 +124,8 @@ const initialize = ({
     //insert entities
     injectEntities(initialized.entities);
 
-    //register objects to scene
-    registerObjectsToScene(game.components.render.meshes);
+    //register objects to scene - fix this up later
+    // registerObjectsToScene(game.components.render.engine.meshes.instanced.map(({ mesh }) => mesh));
   }
 
   assignInitializedGame({
@@ -140,6 +139,9 @@ const initialize = ({
       desiredFPS: 120,
       previousFrame: performance.now()
     },
+    dom: {
+      overlay: el
+    },
     components: {
       input: {
         components: [],
@@ -149,8 +151,21 @@ const initialize = ({
       },
       scripts: [],
       render: {
-        meshes: [],
-        lighting: [generateAmbientLight(), generateDirectionalLight()]
+        engine: {
+          meshes: {
+            instanced: []
+          },
+          lighting: {
+            ambient: [],
+            directional: []
+          }
+        },
+        component: {
+          meshes: {
+            instanced: [],
+          },
+          lighting: []
+        }
       }
     },
     entities: initializedEntities
@@ -197,10 +212,18 @@ const startEngine = () => {
 	// game.sceneElements.objects.cube.rotation.x += 0.001;
 	// game.sceneElements.objects.cube.rotation.y += 0.001;
 
-  game.components.render.meshes.forEach(mesh => {
-    mesh.rotation.x += 0.0001;
-    mesh.rotation.y += 0.0001;
+  game.components.render.component.meshes.instanced.forEach(({ gameObject, path, texture }, i) => {
+    gameObject.rotateX(1);
+    gameObject.updateMatrix();
+
+    const { mesh } = getEngineInstancedMesh({
+      path,
+      texture
+    }) ?? {};
+
+    mesh?.setMatrixAt(i, gameObject.matrix);
   });
+
 
   controls.update();
 
@@ -226,8 +249,22 @@ const stopEngine = () => {
     },
     scripts: [],
     render: {
-      meshes: [],
-      lighting: []
+      engine: {
+        meshes: {
+          instanced: []
+        },
+        lighting: {
+          ambient: [],
+          directional: []
+        }
+      },
+
+      component: {
+        meshes: {
+          instanced: []
+        },
+        lighting: []
+      }
     }
   }
 
@@ -263,5 +300,8 @@ export const GravyEngine = {
   },
   entities: {
     generateEntity
+  },
+  dom: {
+    getOverlay
   }
 }

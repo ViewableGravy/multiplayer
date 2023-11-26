@@ -1,10 +1,12 @@
 import { OrbitControls } from "three/examples/jsm/Addons.js"
 import { THandlers } from "../components/keyboard"
+import { TEngineInstancedMesh, TInstancedMesh, TPreInitializedInstancedMesh } from "../components/instancedMesh"
+import type { TRenderComponent } from "../components/render"
 
 /*********************************************************************
  * Components
  *********************************************************************/
-type TComponent = {
+export type TComponent = {
   name: string,
   identifier: string,
   entity: TEntity
@@ -28,16 +30,17 @@ export type TUninitializedScriptComponent = {
   script: () => void
 } & TUninitializedComponent
 
-export type TUninitializedRenderComponent = {
-  name: 'render',
-  render: {
-    mesh: THREE.Mesh
-  }
-} & TUninitializedComponent
+export type TBaseUninitializedRenderComponent = {
+  name: 'render'
+}
+
+export type TUninitializedRenderComponent = TBaseUninitializedRenderComponent & TUninitializedComponent & {
+  type: 'instancedMesh',
+  render: TPreInitializedInstancedMesh
+}
 
 export type TInputComponent = TComponent & TUninitializedInputComponent
 export type TScriptComponent = TComponent & TUninitializedScriptComponent
-export type TRenderComponent = TComponent & TUninitializedRenderComponent
 
 /**
  * A Union of all Components
@@ -61,6 +64,9 @@ export type TInitializedGame = {
     previousFrame: number,
     deltaTime: number
   },
+  dom: {
+    overlay: HTMLElement,
+  },
   components: {
     input: {
       /**
@@ -76,8 +82,28 @@ export type TInitializedGame = {
      */
     scripts: Array<TScriptComponent>,
     render: {
-      meshes: Array<THREE.Mesh>,
-      lighting: Array<THREE.AmbientLight | THREE.DirectionalLight>
+      /**
+       * Render components specifically for the engine, the other render information from a component is stored in the component information
+       */
+      engine: {
+        meshes: {
+          instanced: Array<TEngineInstancedMesh>
+        },
+        lighting: {
+          ambient: Array<THREE.AmbientLight>,
+          directional: Array<THREE.DirectionalLight>
+        }
+      },
+
+      /**
+       * Render components that contain consumer information and properties
+       */
+      component: {
+        meshes: {
+          instanced: Array<TInstancedMesh>
+        },
+        lighting: Array<THREE.AmbientLight | THREE.DirectionalLight>
+      }
     }
   },
   entities: Array<TEntity>
@@ -94,6 +120,9 @@ export type TUninitializedGame = {
     previousFrame: number,
     deltaTime: number
   },
+  dom: {
+    overlay: null,
+  }
   components: {
     input: {
       components: Array<TInputComponent>, /* Input Components */
@@ -103,8 +132,22 @@ export type TUninitializedGame = {
     },
     scripts: Array<TScriptComponent>,
     render: {
-      meshes: Array<THREE.Mesh>,
-      lighting: Array<THREE.AmbientLight | THREE.DirectionalLight>
+      engine: {
+        meshes: {
+          instanced: Array<TEngineInstancedMesh>
+        },
+        lighting: {
+          ambient: Array<THREE.AmbientLight>,
+          directional: Array<THREE.DirectionalLight>
+        }
+      },
+
+      component: {
+        meshes: {
+          instanced: Array<TInstancedMesh>
+        },
+        lighting: Array<THREE.AmbientLight | THREE.DirectionalLight>
+      }
     }
   },
   entities: Array<TEntity>
@@ -124,6 +167,9 @@ export const game = {
     previousFrame: performance.now(),
     deltaTime: 0
   },
+  dom: {
+    overlay: null,
+  },
   components: {
     input: {
       components: [],
@@ -133,8 +179,21 @@ export const game = {
     },
     scripts: [],
     render: {
-      meshes: [],
-      lighting: []
+      engine: {
+        meshes: {
+          instanced: []
+        },
+        lighting: {
+          ambient: [],
+          directional: []
+        }
+      },
+      component: {
+        meshes: {
+          instanced: []
+        },
+        lighting: []
+      }
     }
   },
   entities: []
