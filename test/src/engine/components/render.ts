@@ -1,19 +1,46 @@
 import { generateUUID } from "three/src/math/MathUtils.js";
-import { TUninitializedComponent, TUninitializedRenderComponent } from "../store/game";
+import { TUninitializedComponent } from "../store/game";
+import { TPreInitializedInstancedMesh, generateInstancedMesh } from "./instancedMesh";
+import type { TComponent } from "../store/game";
 
-export const assignIdentifier = <T>(component: TUninitializedComponent & Record<string, any>) => {
-  component.identifier = generateUUID();
+// expand this with new types in the future
+type TGenerateRender = (props: {
+  path: string,
+  texture: string,
+  type: 'instancedMesh'
+}) => TUninitializedRenderComponent;
 
-  return component as T & { identifier: string };
+export const generateRender: TGenerateRender = ({
+  path,
+  texture,
+  type
+}) => {
+  switch(type) {
+    case 'instancedMesh': {
+      const identifier = generateUUID();
+    
+      return {
+        name: 'render',
+        type: 'instancedMesh',
+        identifier,
+        render: generateInstancedMesh({
+          path,
+          texture,
+          identifier
+        }),
+      }
+    }
+    default:
+      throw new Error('Invalid type provided');
+  }
+}
+
+export type TUninitializedRenderComponent = TUninitializedComponent & {
+  name: 'render',
+  type: 'instancedMesh',
+  render: TPreInitializedInstancedMesh
 };
 
-export const generateRender = ({
-  mesh
-}: {
-  mesh: THREE.Mesh
-}) => assignIdentifier<TUninitializedRenderComponent>(({
-  name: 'render',
-  render: {
-    mesh 
-  },
-}));
+export type TRenderComponent = TComponent & TUninitializedRenderComponent
+
+export type TPreInitializedRenderComponent = ReturnType<typeof generateRender>;
