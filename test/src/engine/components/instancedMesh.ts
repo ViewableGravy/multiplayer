@@ -133,10 +133,13 @@ const popEngineInstancedMesh = ({
 export const createComponentInstancedMesh = (mesh: TPreInitializedInstancedMesh) => {
   const _gameObject = new THREE.Object3D();
 
-  game.components.render.component.meshes.instanced.push({
+  const engineInstancedMesh = {
     ...mesh,
-    gameObject: _gameObject,
-  });
+    gameObject: _gameObject
+  } as TInstancedMesh;
+
+  game.components.render.component.meshes.instanced.push(engineInstancedMesh);
+  return engineInstancedMesh;
 }
 
 /**
@@ -168,7 +171,7 @@ export const updateEngineInstancedMesh = ({
       //pop and then create new instancedMesh with 20% less count
       const newCount = Math.ceil(popped.mesh.count * 0.8);
 
-      createEngineInstancedMesh({
+      return createEngineInstancedMesh({
         path,
         texture,
         geometry: popped.mesh.geometry,
@@ -191,7 +194,7 @@ export const updateEngineInstancedMesh = ({
     //then create new instancedMesh with 20% more count
     const newCount = Math.ceil(popped.mesh.count * 1.2);
 
-    createEngineInstancedMesh({
+    return createEngineInstancedMesh({
       path,
       texture,
       geometry: popped.mesh.geometry,

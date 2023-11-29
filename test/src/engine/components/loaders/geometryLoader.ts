@@ -10,8 +10,6 @@ const getGeometryFromObjGroup = (mesh: THREE.Group<THREE.Object3DEventMap> ) => 
     }
   }
 
-  console.log(geometries)
-
   return geometries;
 }
 
@@ -22,7 +20,6 @@ export const asyncLoadGeometry = async ({
   path: string,
   type: 'obj'
 }) => {
-  console.log('here')
   if (!type) {
     throw new Error('No type provided');
   }

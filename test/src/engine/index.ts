@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { TEntity, TInitializedGame, game } from './store/game';
+import { TPreinitializedEntity, TInitializedGame, TInternalEntity, game } from './store/game';
 import {  KEYS, generateHandler, generateInput, getInputHandlers, keyHandler, registerControls, updatePreviousHandlerIds } from './components/keyboard';
 import { setInnerFramerate, updateFrameRate } from '../helpers/frameRate';
 import { setDeltaTime, setPreviousFrame } from './store/meta';
 import { generateEntity } from './components/entity';
-import { generateRender } from './components/render';
+import { TInternalRenderComponent, generateRender } from './components/render';
 import { getOverlay } from './dom';
 import { handleMeshLoad } from './components/loaders/meshLoader';
-import { getEngineInstancedMesh } from './components/instancedMesh';
+import { generateScript, injectScript } from './components/script';
 
 /**
  * Todo, create unmount function that removes all event listeners
@@ -28,7 +28,7 @@ const initialize = ({
     width: number,
     height: number
   },
-  initializedEntities: Array<TEntity>,
+  initializedEntities: Array<TPreinitializedEntity>,
 }) => {
 
   const generateDirectionalLight = (color: THREE.ColorRepresentation = 0xffffff, intensity: number = 0.5) => {
@@ -86,28 +86,49 @@ const initialize = ({
   /**
    * function that pushes entities into the game state
    */
-  const injectEntities = (entities: Array<TEntity>) => {
-    entities.forEach(entity => {
-      game.entities.push(entity);
+  const injectEntities = (entities: Array<TPreinitializedEntity>) => {
+    Promise.all(entities.map(async (entity) => {
+      const internalEntity = {
+        ...entity,
+        components: []
+      } as TInternalEntity;
 
-      entity.components.forEach(component => {
-        if (component.name === "input") {
-          return game.components.input.components.push(component);
-        }
-
-        if (component.name === "script") {
-          return game.components.scripts.push(component);
-        }
-
-        if (component.name === "render") {
-          if (component.type === 'instancedMesh') {
-            return handleMeshLoad(component.render);
+      const newComponents = await Promise.all(entity.components.map(async (component) => {
+        switch (component.name) {
+          case 'input': {
+            game.components.input.components.push(component);
+            return component;
           }
-
-          throw new Error('Render component type not found');
+          case 'script': {
+            return injectScript({
+              script: component,
+              entity: internalEntity,
+              game: game as TInitializedGame
+            });
+          }
+          case 'render': {
+            if (component.type === 'instancedMesh') {
+              return {
+                ...component,
+                render: await handleMeshLoad(component.render)
+              } as TInternalRenderComponent
+            }
+            throw new Error(`Render component with type ${component.type} does not exist.`)
+          }
+          default: {
+            throw new Error(`Encountered an error inserting entity into world. ${entity}`)
+          }
         }
-      })
-    });
+      }))
+
+      internalEntity.components.push(...newComponents)
+
+      return internalEntity;
+    })).then((entities) => {
+      game.entities.push(...entities);
+    }).catch((err) => {
+      //handle error
+    });  
   };
 
   // const registerObjectsToScene = (meshes: Array<THREE.Mesh | THREE.InstancedMesh>) => {
@@ -122,7 +143,7 @@ const initialize = ({
     game.camera = initialized.camera;
 
     //insert entities
-    injectEntities(initialized.entities);
+    injectEntities(initializedEntities);
 
     //register objects to scene - fix this up later
     // registerObjectsToScene(game.components.render.engine.meshes.instanced.map(({ mesh }) => mesh));
@@ -168,7 +189,7 @@ const initialize = ({
         }
       }
     },
-    entities: initializedEntities
+    entities: []
   });
 
   registerControls({
@@ -191,48 +212,98 @@ const preUpdate = (game: TInitializedGame) => {
 
   // Input Controls
   keyHandler(getInputHandlers(game, 'update'));
-
-  // Framerate Counter
-  updateFrameRate();
-  setInnerFramerate(document.querySelector<HTMLDivElement>('#fps')!);
 }
 
 let animationId: number;
+let intervalId: number;
+
 const startEngine = () => {
-  animationId = requestAnimationFrame( startEngine );
 
-  if (!game.initialized)
-    return;
+  const renderLoop = () => {
+    animationId = requestAnimationFrame( renderLoop );
 
-  preUpdate(game)
+    if (!game.initialized)
+      return;
+
+    // Framerate Counter
+    updateFrameRate();
+    setInnerFramerate(document.querySelector<HTMLDivElement>('#fps')!);
+
+    preRender();
+
+    game.renderer.render( game.scene, game.camera );
+
+    postRender();
+  }
+
+  const gameLoop = () => {
+    if (!game.initialized)
+      return;
+
+    const { controls } = game;
+
+    preUpdate(game)
+
+    game.components.render.component.meshes.instanced.forEach(({ gameObject }, i) => {
+      const mesh = game.components.render.engine.meshes.instanced[i].mesh;
+
+      mesh.setMatrixAt(i, gameObject.matrix);
+
+      //look into a better system so it does not update every cycle
+      mesh.instanceMatrix.needsUpdate = true;
+    });
+
+  
+
+    game.components.scripts.forEach(script => {
+      script.update();
+    });
+
+    controls.update();
+  }
+
+  intervalId = setInterval(gameLoop, 30)
+  renderLoop();
+
+
+
+  
+
+  // if (!game.initialized)
+  //   return;
+
+  // preUpdate(game)
   
   // Game Logic
-  const { controls } = game;
+  // const { controls } = game;
 
 	// game.sceneElements.objects.cube.rotation.x += 0.001;
 	// game.sceneElements.objects.cube.rotation.y += 0.001;
 
-  game.components.render.component.meshes.instanced.forEach(({ gameObject, path, texture }, i) => {
-    gameObject.rotateX(1);
-    gameObject.updateMatrix();
+  // game.components.render.component.meshes.instanced.forEach(({ gameObject, path, texture }, i) => {
+  //   gameObject.rotateX(1);
+  //   gameObject.updateMatrix();
 
-    const { mesh } = getEngineInstancedMesh({
-      path,
-      texture
-    }) ?? {};
+  //   const { mesh } = getEngineInstancedMesh({
+  //     path,
+  //     texture
+  //   }) ?? {};
 
-    mesh?.setMatrixAt(i, gameObject.matrix);
-  });
+  //   mesh?.setMatrixAt(i, gameObject.matrix);
+  // });
 
+  // game.components.scripts.forEach(script => {
+  //   script.update();
+  // });
 
-  controls.update();
+  // controls.update();
 
   // Render
-  preRender();
-	game.renderer.render( game.scene, game.camera );
+  // preRender();
+	// game.renderer.render( game.scene, game.camera );
 
   // Post Render Actions
-  postRender();
+  // postRender();
 }
 
 const stopEngine = () => {
@@ -272,6 +343,7 @@ const stopEngine = () => {
     return 
 
   cancelAnimationFrame(animationId);
+  clearInterval(intervalId);
 }
 
 /***************************************************************
@@ -296,6 +368,9 @@ export const GravyEngine = {
     },
     render: {
       generateRender
+    },
+    script: {
+      generateScript
     }
   },
   entities: {

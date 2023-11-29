@@ -1,5 +1,5 @@
 import { renderControls } from './dom/main.render.ts';
-import { attachStopEngine, setupIanCubeCube, setupInitializer } from './dom/logic.game.ts';
+import { attachStopEngine, setupInitializer } from './dom/logic.game.ts';
 import './style.css'
 
 /**
@@ -30,10 +30,10 @@ setupInitializer(
   document.querySelector<HTMLDivElement>('#game')!
 );
 
-setupIanCubeCube(
-  document.querySelector<HTMLButtonElement>('#cubecube')!,
-  document.querySelector<HTMLDivElement>('#game')!
-);
+// setupIanCubeCube(
+//   document.querySelector<HTMLButtonElement>('#cubecube')!,
+//   document.querySelector<HTMLDivElement>('#game')!
+// );
 
 /**
  * Attaches the stop engine function to the relevant elements

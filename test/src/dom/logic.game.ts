@@ -9,7 +9,9 @@ import type { ValueOf } from '../engine/types/helpers.ts';
  * Engine Imports
  */
 import { GravyEngine } from '../engine/index.ts';
-import { test } from './test.ts';
+import { TInternalRenderComponent } from '../engine/components/render.ts';
+import * as THREE from 'three';
+import { TInitializedGame, TInternalEntity } from '../engine/store/game.ts';
 
 
 const SPEEDS = {
@@ -113,59 +115,15 @@ const handlers: THandlers = [
 
 export const controls = handlers.map(({ name, keys, description }) => ({ name, keys, description })) as TVisualControls;
 
+const myFirstEntityScript = (entity: TInternalEntity) => {
+  const position = new THREE.Vector3(); //incorporate this into a "state" component once that is implemented.
+  const comp = entity.components.find(({ name }) => name === 'render') as TInternalRenderComponent;
 
+  position.setFromMatrixPosition( comp.render.gameObject.matrix );
 
+  position.x += 0.01;
 
-export const setupIanCubeCube = (button: HTMLElement, gameEl: HTMLElement) => {
-  // const createNewInstancedMesh = (count: number) => {
-  //   const instanced = new THREE.InstancedMesh(
-  //     new THREE.BoxGeometry( 1, 1, 1 ),
-  //     getPhongMaterialFromTexture(
-  //       new THREE.TextureLoader().load('/src/assets/ian.jpg')
-  //     ),
-  //     count
-  //   );
-    
-  //   const dummy = new THREE.Object3D();
-  //   for (let i = 0; i < count; i++) {
-  //     dummy.position.set( Math.random() * 60 - 30, Math.random() * 60 - 30, Math.random() * 60 - 30 );
-    
-  //     dummy.updateMatrix();
-  //     instanced.setMatrixAt( i, dummy.matrix );
-  //   }
-  
-  //   return instanced;
-  // }
-
-  const initializedEntities = [
-    GravyEngine.entities.generateEntity({ 
-      name: 'myFirstEntity', 
-      components: [
-        GravyEngine.component.input.generateInput(handlers),
-        GravyEngine.component.render.generateRender({
-          type: 'instancedMesh',
-          texture: '/src/assets/ian.jpg',
-          path: 'src/assets/giftBox.obj'
-        })
-        // GravyEngine.component.render.generateRender({ mesh: createNewInstancedMesh(10000) })
-      ]
-    })
-  ]
-
-  button.addEventListener('click', () => {
-    GravyEngine.initialize({
-      el: gameEl,
-      size: {
-        height: 500,
-        width: 500
-      },
-      initializedEntities
-    });
-
-    GravyEngine.startEngine();
-
-    
-  })
+  comp.render.gameObject.matrix.setPosition(position);
 }
 
 export const setupInitializer = (button: HTMLElement, gameEl: HTMLElement) => {
@@ -178,7 +136,8 @@ export const setupInitializer = (button: HTMLElement, gameEl: HTMLElement) => {
           type: 'instancedMesh',
           texture: 'src/assets/ian.jpg',
           path: 'src/assets/giftBox.obj'
-        })
+        }),
+        GravyEngine.component.script.generateScript(myFirstEntityScript)
       ]
     })
   ]

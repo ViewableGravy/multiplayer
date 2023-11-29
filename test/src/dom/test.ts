@@ -15,7 +15,6 @@ export const test = (render: TUninitializedRenderComponent) => {
       );
 
       setTimeout(() => {
-        console.log(game.scene)
         game.scene?.add(mesh);
       }, 1000);
     });

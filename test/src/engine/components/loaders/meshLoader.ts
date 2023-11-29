@@ -30,9 +30,6 @@ export const handleMeshLoad = async (mesh: TPreInitializedInstancedMesh) => {
       geometry, 
       material 
     });
-
-    // Insert game object and mesh into the game (this can be accessed by the user)
-    createComponentInstancedMesh(mesh);
   } else {
     // Note: If this becomes a performance bottleneck, then .some and this can be used at the same time.
     const instancedMesh = getEngineInstancedMesh({ path: mesh.path, texture: mesh.texture });
@@ -47,10 +44,10 @@ export const handleMeshLoad = async (mesh: TPreInitializedInstancedMesh) => {
       texture: mesh.texture, 
       mesh: instancedMesh.mesh
     });
-
-    // Update the component instancedMesh count
-    createComponentInstancedMesh(mesh);
   }
+
+  // Update the component instancedMesh count
+  return createComponentInstancedMesh(mesh);
 } 
 
 type TGenerateMeshLoaderOptions = {

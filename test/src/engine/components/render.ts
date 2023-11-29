@@ -1,6 +1,6 @@
 import { generateUUID } from "three/src/math/MathUtils.js";
 import { TUninitializedComponent } from "../store/game";
-import { TPreInitializedInstancedMesh, generateInstancedMesh } from "./instancedMesh";
+import { TInstancedMesh, TPreInitializedInstancedMesh, generateInstancedMesh } from "./instancedMesh";
 import type { TComponent } from "../store/game";
 
 // expand this with new types in the future
@@ -13,7 +13,7 @@ type TGenerateRender = (props: {
 export const generateRender: TGenerateRender = ({
   path,
   texture,
-  type
+  type,
 }) => {
   switch(type) {
     case 'instancedMesh': {
@@ -40,6 +40,12 @@ export type TUninitializedRenderComponent = TUninitializedComponent & {
   type: 'instancedMesh',
   render: TPreInitializedInstancedMesh
 };
+
+export type TInternalRenderComponent = TComponent & {
+  name: 'render',
+  type: 'instancedMesh',
+  render: TInstancedMesh
+}
 
 export type TRenderComponent = TComponent & TUninitializedRenderComponent
 

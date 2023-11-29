@@ -1,7 +1,8 @@
 import { OrbitControls } from "three/examples/jsm/Addons.js"
 import { THandlers } from "../components/keyboard"
 import { TEngineInstancedMesh, TInstancedMesh, TPreInitializedInstancedMesh } from "../components/instancedMesh"
-import type { TRenderComponent } from "../components/render"
+import type { TRenderComponent as TGeneratedRenderComponent, TInternalRenderComponent } from "../components/render"
+import { TInternalScriptComponent, TScriptComponent as TGeneratedScriptComponent } from "../components/script"
 
 /*********************************************************************
  * Components
@@ -9,7 +10,7 @@ import type { TRenderComponent } from "../components/render"
 export type TComponent = {
   name: string,
   identifier: string,
-  entity: TEntity
+  entity: TPreinitializedEntity
 }
 
 export type TUninitializedComponent = {
@@ -39,15 +40,20 @@ export type TUninitializedRenderComponent = TBaseUninitializedRenderComponent & 
   render: TPreInitializedInstancedMesh
 }
 
-export type TInputComponent = TComponent & TUninitializedInputComponent
-export type TScriptComponent = TComponent & TUninitializedScriptComponent
+export type TGeneratedInputComponent = TComponent & TUninitializedInputComponent
 
 /**
  * A Union of all Components
  */
-export type TUnionComponents = TInputComponent | TScriptComponent | TRenderComponent
+export type TUnionPreinitializedComponents = TGeneratedInputComponent | TGeneratedScriptComponent | TGeneratedRenderComponent
+export type TUnionComponents = TGeneratedInputComponent | TInternalScriptComponent | TInternalRenderComponent
 
-export type TEntity = {
+export type TPreinitializedEntity = {
+  id: string,
+  components: Array<TUnionPreinitializedComponents>
+}
+
+export type TInternalEntity = {
   id: string,
   components: Array<TUnionComponents>
 }
@@ -72,7 +78,7 @@ export type TInitializedGame = {
       /**
        * Input Components 
        */
-      components: Array<TInputComponent>, 
+      components: Array<TGeneratedInputComponent>, 
       currentKeys: Record<string, boolean>,
       currentHandlerIDs: string[],
       previousHandlerIDs: string[]
@@ -80,7 +86,7 @@ export type TInitializedGame = {
     /** 
      * Custom interaction scripts that are run per frame 
      */
-    scripts: Array<TScriptComponent>,
+    scripts: Array<TInternalScriptComponent>,
     render: {
       /**
        * Render components specifically for the engine, the other render information from a component is stored in the component information
@@ -106,7 +112,7 @@ export type TInitializedGame = {
       }
     }
   },
-  entities: Array<TEntity>
+  entities: Array<TInternalEntity>
 }
 
 export type TUninitializedGame = {
@@ -125,12 +131,12 @@ export type TUninitializedGame = {
   }
   components: {
     input: {
-      components: Array<TInputComponent>, /* Input Components */
+      components: Array<TGeneratedInputComponent>, /* Input Components */
       currentKeys: Record<string, boolean>,
       currentHandlerIDs: string[],
       previousHandlerIDs: string[]
     },
-    scripts: Array<TScriptComponent>,
+    scripts: Array<TGeneratedScriptComponent>,
     render: {
       engine: {
         meshes: {
@@ -150,7 +156,7 @@ export type TUninitializedGame = {
       }
     }
   },
-  entities: Array<TEntity>
+  entities: Array<TPreinitializedEntity>
 }
 
 /**
