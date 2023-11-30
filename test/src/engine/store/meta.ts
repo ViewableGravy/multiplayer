@@ -17,5 +17,5 @@ export const setPreviousFrame = () => {
  * Updates the game object with the current time. This should be run at the start of the current game loop
  */
 export const setDeltaTime = () => {
-  game.meta.deltaTime = performance.now() - game.meta.previousFrame;
+  game.meta.deltaTime = (performance.now() - game.meta.previousFrame).toFixed(4) as any as number;
 }

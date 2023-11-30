@@ -4,21 +4,26 @@
 import type { THandlerCallback, THandlers } from '../engine/components/keyboard.ts';
 import type { ValueOf } from '../engine/types/helpers.ts';
 
+/**
+ * Asset imports
+ */
+import ianPNG from '../assets/ian.jpg';
 
 /**
  * Engine Imports
  */
 import { GravyEngine } from '../engine/index.ts';
 import { TInternalRenderComponent } from '../engine/components/render.ts';
+import { TInternalEntity } from '../engine/store/game.ts';
 import * as THREE from 'three';
-import { TInitializedGame, TInternalEntity } from '../engine/store/game.ts';
+import { TScript } from '../engine/components/script.ts';
 
 
 const SPEEDS = {
-  CRAWL: 0.1,
-  WALK: 0.2,
-  RUN: 0.5,
-  SPRINT: 1,
+  CRAWL: 0.2,
+  WALK: 0.5,
+  RUN: 0.8,
+  SPRINT: 1.2,
 } as const;
 
 const HANDLER_NAMES = {
@@ -58,17 +63,40 @@ const tempRenderToScreen = ({ activePreviousFrame, deltaTime, keys, speed }: {
   `;
 }
 
+const applyMovement = (entity: TInternalEntity, direction: 'up' | 'left' | 'down' | 'right', speed?: ValueOf<typeof SPEEDS> ) => {
+  const position = new THREE.Vector3(); //incorporate this into a "state" component once that is implemented.
+  const comp = entity.components.find(({ name }) => name === 'render') as TInternalRenderComponent;
+
+  const directions = {
+    'up': ['z', -(speed ?? 0.01)],
+    'left': ['x', -(speed ?? 0.01) * 0.7],
+    'down': ['z', (speed ?? 0.01) * 0.5],
+    'right': ['x', (speed ?? 0.01) * 0.7],
+  } as const;
+
+  position.setFromMatrixPosition( comp.render.gameObject.matrix );
+
+  const [ axis, amount ] = directions[direction]
+  position[axis] += amount;
+
+  comp.render.gameObject.matrix.setPosition(position);
+}
+
 const events = {
-  up: (speed: ValueOf<typeof SPEEDS> = SPEEDS.WALK ) => ({ activePreviousFrame, deltaTime, keys }) => {
+  up: (speed: ValueOf<typeof SPEEDS> = SPEEDS.CRAWL ) => ({ activePreviousFrame, deltaTime, keys, entity }) => {
+    applyMovement(entity, 'up', speed);
     tempRenderToScreen({ activePreviousFrame, deltaTime, keys, speed })
   },
-  left: ({ activePreviousFrame, deltaTime, keys }) => {
+  left: ({ activePreviousFrame, deltaTime, keys, entity }) => {
+    applyMovement(entity, 'left', SPEEDS.CRAWL);
     tempRenderToScreen({ activePreviousFrame, deltaTime, keys, speed: SPEEDS.CRAWL })
   },
-  down: ({ activePreviousFrame, deltaTime, keys }) => {
+  down: ({ activePreviousFrame, deltaTime, keys, entity }) => {
+    applyMovement(entity, 'down', SPEEDS.CRAWL);
     tempRenderToScreen({ activePreviousFrame, deltaTime, keys, speed: SPEEDS.CRAWL })
   },
-  right: ({ activePreviousFrame, deltaTime, keys }) => {
+  right: ({ activePreviousFrame, deltaTime, keys, entity }) => {
+    applyMovement(entity, 'right', SPEEDS.CRAWL);
     tempRenderToScreen({ activePreviousFrame, deltaTime, keys, speed: SPEEDS.CRAWL })
   },
 } as TEvents;
@@ -92,7 +120,7 @@ const handlers: THandlers = [
       [ KEYS.SHIFT, KEYS.W ], 
       [ KEYS.SHIFT, KEYS.ARROW_UP ]
     ],
-    handler: events.up(SPEEDS.SPRINT),
+    handler: events.up(SPEEDS.RUN),
     priority: 1,
     deescalations: [HANDLER_NAMES.WALK_UP],
   }),
@@ -115,15 +143,12 @@ const handlers: THandlers = [
 
 export const controls = handlers.map(({ name, keys, description }) => ({ name, keys, description })) as TVisualControls;
 
-const myFirstEntityScript = (entity: TInternalEntity) => {
-  const position = new THREE.Vector3(); //incorporate this into a "state" component once that is implemented.
-  const comp = entity.components.find(({ name }) => name === 'render') as TInternalRenderComponent;
 
-  position.setFromMatrixPosition( comp.render.gameObject.matrix );
-
-  position.x += 0.01;
-
-  comp.render.gameObject.matrix.setPosition(position);
+/**
+ * Callback function that will be called on each render cycle.
+ */
+const myFirstEntityScript: TScript = (entity) => {
+ 
 }
 
 export const setupInitializer = (button: HTMLElement, gameEl: HTMLElement) => {
@@ -134,7 +159,7 @@ export const setupInitializer = (button: HTMLElement, gameEl: HTMLElement) => {
         GravyEngine.component.input.generateInput(handlers),
         GravyEngine.component.render.generateRender({
           type: 'instancedMesh',
-          texture: 'src/assets/ian.jpg',
+          texture: ianPNG,
           path: 'src/assets/giftBox.obj'
         }),
         GravyEngine.component.script.generateScript(myFirstEntityScript)

@@ -1,5 +1,5 @@
 import { generateUUID } from "three/src/math/MathUtils.js";
-import { TInitializedGame, TUninitializedInputComponent, game } from "../store/game";
+import { TGeneratedInputComponent, TInitializedGame, TInternalEntity, TUninitializedInputComponent, game } from "../store/game";
 import { ValueOf } from "../types/helpers";
 
 /**
@@ -106,6 +106,11 @@ export type THandlerCallback = (props: {
    * dictates whether this handler was active in the previous frame.
    */
   activePreviousFrame: boolean;
+
+  /**
+   * The entity that this handler is attached to
+   */
+  entity: TInternalEntity
 }) => void
 
 export type THandler = {
@@ -185,11 +190,6 @@ export const generateHandler = ({
   deescalations: deescalations ?? []
 } as THandler); 
 
-export const generateInput = (handlers: THandlers) => ({
-  name: 'input',
-  handlers,
-  identifier: generateUUID()
-} as const);
 
 export const updatePreviousHandlerIds = () => {
   game.components.input.previousHandlerIDs = game.components.input.currentHandlerIDs;
@@ -210,12 +210,13 @@ const updateCurrentHandlerIds = (handler: THandler) => {
 const onMatch = (handler: THandlers[number], enforedDeescalations: string[], keys: string | string[]) => {
   updateCurrentHandlerIds(handler);
 
+  // note: the handler is wrapped in a function that provides the entity correlating to this handler so it is not provided. See injectEntities in src/engine/index.js
   handler.handler({
     activePreviousFrame: game.components.input.previousHandlerIDs.includes(handler.identifier),
     deltaTime: game.meta.deltaTime,
     game: game as TInitializedGame,
     keys
-  });
+  } as any);
 
   if (handler.deescalations)
     enforedDeescalations.push(...handler.deescalations);
@@ -276,6 +277,47 @@ const getEventHandler = ({
   }
 }
 
+/***** Generators *****/
+/**
+ * @public
+ * 
+ * Function that should be used when generating an entity to generate an input component
+ */
+export const generateInput = (handlers: THandlers) => ({
+  name: 'input',
+  handlers,
+  identifier: generateUUID()
+} as const);
+
+
+export const pushHandler = (handler: TGeneratedInputComponent) => game.components.input.components.push(handler)
+
+/**
+ * @private
+ * 
+ * Function that should be used within the @see injectEntities function to generate an input component. This also accepts a callback that by default pushes the handler to the game state.
+ */
+export const generateInternalHandlers = ({ component, entity } : { component: TGeneratedInputComponent, entity: TInternalEntity }, onGenerate = pushHandler) => {
+  const input: TGeneratedInputComponent = {
+    ...component,
+    handlers: component.handlers.map((handler) => ({
+      ...handler,
+      handler: (options) => handler.handler({ ...options, entity })
+    }))
+  }
+
+  onGenerate(input);
+
+  return input;
+}
+
+
+/***** Initialize Functions *****/
+/**
+ * @private
+ * 
+ * Function
+ */
 export const registerControls = ({
   handlers
 }: {

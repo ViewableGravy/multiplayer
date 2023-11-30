@@ -2,6 +2,7 @@ import { generateUUID } from "three/src/math/MathUtils.js";
 import { TUninitializedComponent } from "../store/game";
 import { TInstancedMesh, TPreInitializedInstancedMesh, generateInstancedMesh } from "./instancedMesh";
 import type { TComponent } from "../store/game";
+import { handleMeshLoad } from "./loaders/meshLoader";
 
 // expand this with new types in the future
 type TGenerateRender = (props: {
@@ -33,6 +34,13 @@ export const generateRender: TGenerateRender = ({
     default:
       throw new Error('Invalid type provided');
   }
+}
+
+export const generateInternalRenderComponent = async ({ component }: { component: TRenderComponent }): Promise<TInternalRenderComponent> => {
+  return await {
+    ...component,
+    render: await handleMeshLoad(component.render)
+  } as TInternalRenderComponent;
 }
 
 export type TUninitializedRenderComponent = TUninitializedComponent & {

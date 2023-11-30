@@ -1,7 +1,6 @@
-import { TComponent, TPreinitializedEntity, TInitializedGame, TInternalEntity } from "../store/game";
+import { TComponent, TInitializedGame, TInternalEntity, game } from "../store/game";
 
-
-type TScript = (entity: TInternalEntity, game: TInitializedGame) => void;
+export type TScript = (entity: TInternalEntity, game: TInitializedGame) => void;
 
 export const generateScript = (script: TScript, options?: Partial<{
   run: {
@@ -25,7 +24,9 @@ export type TInternalScriptComponent = TScriptComponent & {
   destroy: () => void,
 }
 
-export const injectScript = ({
+export const pushScript = (component: TInternalScriptComponent) => game.components.scripts.push(component);
+
+export const generateInternalScript = ({
   script,
   entity,
   game
@@ -33,7 +34,7 @@ export const injectScript = ({
   script: TScriptComponent,
   entity: TInternalEntity,
   game: TInitializedGame
-}) => {
+}, onGenerate = pushScript) => {
   // Create an internal script component
   const internalScriptComponent = {
     ...script,
@@ -53,7 +54,7 @@ export const injectScript = ({
   }
 
   // Inject the internal script component into the game
-  game.components.scripts.push(internalScriptComponent);
+  onGenerate(internalScriptComponent);
 
   // return the internal script component (as this is used as part of the map from external to internal entity)
   return internalScriptComponent;
